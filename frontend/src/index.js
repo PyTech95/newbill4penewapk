@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import "@/index.css";
 import App from "@/App";
+import { initNative, isNative } from "@/lib/native";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
@@ -10,9 +11,12 @@ root.render(
   </React.StrictMode>,
 );
 
-// Register PWA service worker. On new SW available -> tell it to skipWaiting and reload once,
-// so production users always get the latest bundle (fixes "fix deployed but user still on old code").
-if ('serviceWorker' in navigator) {
+// Initialize native (Capacitor) features when running inside the Android/iOS shell.
+initNative();
+
+// Register PWA service worker (web only). Skipped inside the native app shell,
+// where a service worker can interfere with the bundled capacitor:// assets.
+if ('serviceWorker' in navigator && !isNative()) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').then((reg) => {
       const promptUpdate = (worker) => {

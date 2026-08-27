@@ -159,3 +159,24 @@ body {
   align-items: center !important;
   justify-content: center !important;
 }
+
+/* ============================================================
+   Native app (Capacitor) — safe-area insets for notch / home bar.
+   Scoped to .native-app so the web build is completely unaffected.
+   ============================================================ */
+.native-app body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  box-sizing: border-box;
+}
+.native-app {
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
+}
+/* Prevent iOS webview text-size auto-adjust + overscroll glow */
+.native-app body {
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior-y: none;
+}

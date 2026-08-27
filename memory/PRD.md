@@ -302,3 +302,23 @@ is the tested primary. Real keys needed to exercise the fee-QR path.
 - AI = Gemini via EMERGENT_LLM_KEY fallback. Razorpay + Resend NOT configured (graceful degrade).
 - TO GO LIVE (real money): add RAZORPAY_KEY_ID/SECRET/WEBHOOK_SECRET (rzp_test_ first), optionally
   RESEND_API_KEY + SENDER_EMAIL and own GEMINI_API_KEY. Replace DEMO_OTP with a real SMS provider.
+
+## Mobile apps — Android & iOS via Capacitor (2026-08-27)
+- Founder asked to ship the web portal as Android + iOS apps with the SAME graphics/layout.
+  Chose **Capacitor 7** (wraps the existing React app → pixel-identical UI, single codebase).
+  (Capacitor 8 needs Node 22; this env is Node 20.)
+- Added to frontend/: capacitor.config.json (appId com.bill4pe.app, appName BILL4PE, webDir build),
+  native `android/` (Android Studio) + `ios/` (Xcode) projects, both tracked in git.
+- Plugins: @capacitor/core, app, camera, splash-screen, status-bar, keyboard, preferences.
+- Native permissions wired: Android CAMERA/RECORD_AUDIO/MODIFY_AUDIO_SETTINGS/READ_MEDIA_IMAGES +
+  UPI <queries>; iOS NSCamera/NSMicrophone/NSPhotoLibrary usage strings + LSApplicationQueriesSchemes (upi/tez/phonepe/paytmmp/gpay).
+- Branded app icons + splash generated from the BILL4PE logo (navy #0A1128) via @capacitor/assets
+  (android 87, ios 10, pwa 14 assets).
+- frontend/src/lib/native.js: splash hide, status-bar theming, Android hardware-back handler,
+  safe-area insets — all NO-OP on web (guarded by Capacitor.isNativePlatform), so the browser app is unaffected.
+  Service-worker registration skipped inside the native shell.
+- package.json scripts: mobile:sync / mobile:android / mobile:ios / mobile:icons.
+- Docs: frontend/MOBILE_BUILD.md (full build/release steps for both stores + cloud CI option).
+- NOTE: APK/IPA compile requires Android Studio / Xcode (or Appflow/GitHub Actions) — NOT possible
+  in this Linux container (no JDK/Android SDK/Xcode). Buildable source delivered as agreed.
+- BEFORE release: set REACT_APP_BACKEND_URL to the deployed production backend, then `yarn mobile:sync`.
