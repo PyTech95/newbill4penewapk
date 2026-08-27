@@ -1,0 +1,102 @@
+name: Android Debug APK
+
+# Builds an installable BILL4PE debug APK in the cloud — no Android Studio needed.
+#
+# HOW TO USE
+# 1. Push this repo to GitHub (use the "Save to GitHub" button in the Emergent chat).
+# 2. GitHub -> Actions tab -> "Android Debug APK" -> "Run workflow".
+#    (optionally paste your deployed backend URL; otherwise the committed
+#     frontend/.env value is used.)
+# 3. When it finishes, open the run -> "Artifacts" -> download "bill4pe-debug-apk".
+#    Unzip it and copy app-debug.apk to your Android phone to install
+#    (enable "Install unknown apps" for your file manager/browser).
+#
+# Pushing a git tag like v1.0.0 additionally publishes the APK to a GitHub
+# Release, which is the easiest link to open + install directly on a phone.
+
+on:
+  workflow_dispatch:
+    inputs:
+      backend_url:
+        description: "Production backend URL to bake into the app (blank = use committed frontend/.env)"
+        required: false
+        default: ""
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install frontend dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Point app at the production backend (optional)
+        run: |
+          URL="${{ github.event.inputs.backend_url }}"
+          if [ -n "$URL" ]; then
+            echo "Baking REACT_APP_BACKEND_URL=$URL into the build"
+            if grep -q '^REACT_APP_BACKEND_URL=' .env 2>/dev/null; then
+              sed -i "s#^REACT_APP_BACKEND_URL=.*#REACT_APP_BACKEND_URL=$URL#" .env
+            else
+              echo "REACT_APP_BACKEND_URL=$URL" >> .env
+            fi
+          else
+            echo "Using committed frontend/.env REACT_APP_BACKEND_URL"
+          fi
+          echo "----- effective .env -----"
+          cat .env || true
+
+      - name: Build web bundle
+        run: GENERATE_SOURCEMAP=false yarn build
+
+      - name: Sync web assets into the Android project
+        run: npx --yes cap sync android
+
+      - name: Build debug APK
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+        working-directory: frontend/android
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bill4pe-debug-apk
+          path: frontend/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Attach APK to GitHub Release (only on version tags)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: frontend/android/app/build/outputs/apk/debug/app-debug.apk
+          name: BILL4PE ${{ github.ref_name }}
+          body: |
+            BILL4PE Android debug build.
+            Download `app-debug.apk` below and install on your Android device.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
